@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOME — Dashboard de Conhecimento</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0D0F14;
+    --surface: #151820;
+    --card: #1C2030;
+    --card2: #212638;
+    --accent: #E8C547;
+    --accent2: #4ECDC4;
+    --accent3: #FF6B6B;
+    --text: #E8EAF0;
+    --muted: #6B7280;
+    --border: #252A3A;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── LOADING ── */
+  #loading {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  .loader-ring {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loader-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.4; transform:scale(1.4); }
+  }
+
+  .header-brand {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .header-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    color: var(--text);
+  }
+
+  .btn-refresh {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-refresh:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── TABS ── */
+  .tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    padding: 0 2rem;
+    gap: 0;
+    overflow-x: auto;
+  }
+
+  .tab {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── BODY ── */
+  #app { display: none; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+  }
+
+  .kpi-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.2rem;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.4rem;
+  }
+
+  .kpi-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .filter-select:focus { border-color: var(--accent); }
+
+  /* ── TABLE ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  .data-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .data-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid rgba(37,42,58,0.5);
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    overflow-x: auto;
+  }
+
+  /* ── BADGE ── */
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .badge-sim { background: rgba(78,205,196,0.15); color: var(--accent2); border: 1px solid rgba(78,205,196,0.25); }
+  .badge-nao { background: rgba(107,114,128,0.1); color: var(--muted); border: 1px solid var(--border); }
+  .badge-mod { background: rgba(232,197,71,0.1); color: var(--accent); border: 1px solid rgba(232,197,71,0.2); }
+
+  /* ── LEVEL PILL ── */
+  .level-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .lvl-5 { background: rgba(78,205,196,0.2); color: var(--accent2); }
+  .lvl-4 { background: rgba(78,205,196,0.12); color: var(--accent2); }
+  .lvl-3 { background: rgba(232,197,71,0.15); color: var(--accent); }
+  .lvl-2 { background: rgba(232,197,71,0.08); color: var(--accent); }
+  .lvl-1 { background: rgba(107,114,128,0.12); color: var(--muted); }
+  .lvl-0 { background: transparent; color: var(--border); }
+
+  /* ── CONSULTANT CARD ── */
+  .consultant-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .consultant-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+
+  .consultant-card:hover {
+    border-color: rgba(232,197,71,0.4);
+    transform: translateY(-1px);
+  }
+
+  .consultant-card.selected {
+    border-color: var(--accent);
+    background: var(--card2);
+  }
+
+  .cc-top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .cc-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1rem;
+    color: #0D0F14;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .cc-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .cc-date {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .cc-stats {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .cc-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .cc-stat-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .cc-stat-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  /* ── MODULE COVERAGE BAR ── */
+  .coverage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-bottom: 2rem;
+  }
+
+  .coverage-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 40px;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .coverage-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .coverage-bar-wrap {
+    height: 6px;
+    background: var(--border);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .coverage-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    transition: width 0.6s ease;
+  }
+
+  .coverage-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    text-align: right;
+  }
+
+  /* ── MODULE VIEW ── */
+  .module-expertise-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+  }
+
+  .mod-exp-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .mod-exp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .mod-exp-code {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .mod-exp-name {
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+
+  .mod-exp-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .mod-exp-body {
+    padding: 0.75rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .mod-expert-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .mod-expert-name {
+    font-size: 0.78rem;
+    color: var(--text);
+  }
+
+  .level-dots {
+    display: flex;
+    gap: 3px;
+  }
+
+  .level-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  .level-dot.filled { background: var(--accent); }
+  .level-dot.filled.high { background: var(--accent2); }
+
+  .no-data {
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Consultant detail panel */
+  #consultantDetail {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+
+  .detail-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.2rem;
+  }
+
+  .detail-close {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.15s;
+  }
+
+  .detail-close:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  .detail-modules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .detail-mod-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  .detail-mod-chip.known { border-color: rgba(78,205,196,0.3); }
+
+  .chip-code {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+  }
+
+  .chip-avg {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--accent2);
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 1.25rem 1rem 4rem; }
+    .header { padding: 0.75rem 1rem; }
+    .tabs { padding: 0 1rem; }
+    .coverage-row { grid-template-columns: 80px 1fr 35px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loader-ring"></div>
+  <span class="loader-text">Carregando dados...</span>
+</div>
+
+<div id="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="header-dot"></div>
+      <div>
+        <div class="header-brand">DOME · NetSuite</div>
+        <div class="header-title">Dashboard de Conhecimento</div>
+      </div>
+    </div>
+    <button class="btn-refresh" onclick="loadData()">↺ Atualizar</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('visao-geral')">Visão Geral</div>
+    <div class="tab" onclick="switchTab('consultores')">Por Consultor</div>
+    <div class="tab" onclick="switchTab('modulos')">Por Módulo</div>
+    <div class="tab" onclick="switchTab('matriz')">Matriz Completa</div>
+  </div>
+
+  <!-- ── VISÃO GERAL ── -->
+  <div id="view-visao-geral" class="view active">
+    <div class="container">
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div class="section-title">Cobertura por módulo <span>(% de consultores que conhecem)</span></div>
+      <div class="coverage-list" id="coverageList"></div>
+
+      <div class="section-title" style="margin-top:2rem;">Respostas recentes</div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Consultor</th>
+              <th>Data/Hora</th>
+              <th>Módulos</th>
+              <th>Processos</th>
+              <th>Nível médio</th>
+            </tr>
+          </thead>
+          <tbody id="recentTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONSULTORES ── -->
+  <div id="view-consultores" class="view">
+    <div class="container">
+      <div class="section-title">Selecione um consultor para ver o perfil completo</div>
+      <div class="consultant-grid" id="consultantGrid"></div>
+      <div id="consultantDetail">
+        <div class="detail-header">
+          <span class="detail-title" id="detailName"></span>
+          <button class="detail-close" onclick="closeDetail()">✕</button>
+        </div>
+        <div class="detail-modules" id="detailModules"></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Módulo</th>
+                <th>Processo</th>
+                <th>Nível</th>
+              </tr>
+            </thead>
+            <tbody id="detailTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MÓDULOS ── -->
+  <div id="view-modulos" class="view">
+    <div class="container">
+      <div class="section-title">Quem conhece cada módulo</div>
+      <div class="module-expertise-grid" id="moduleExpertGrid"></div>
+    </div>
+  </div>
+
+  <!-- ── MATRIZ ── -->
+  <div id="view-matriz" class="view">
+    <div class="container">
+      <div class="filter-bar">
+        <select class="filter-select" id="filterConsultor" onchange="renderMatriz()">
+          <option value="">Todos os consultores</option>
+        </select>
+        <select class="filter-select" id="filterModulo" onchange="renderMatriz()">
+          <option value="">Todos os módulos</option>
+        </select>
+        <select class="filter-select" id="filterNivel" onchange="renderMatriz()">
+          <option value="">Qualquer nível</option>
+          <option value="5">Nível 5</option>
+          <option value="4">Nível 4+</option>
+          <option value="3">Nível 3+</option>
+          <option value="1">Apenas mapeados</option>
+          <option value="0">Não conhece</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Consultor</th>
+              <th>Módulo</th>
+              <th>Conhece?</th>
+              <th>Processo</th>
+              <th>Subgrupo</th>
+              <th>Nível</th>
+            </tr>
+          </thead>
+          <tbody id="matrizTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = "1pfgJ9lWaGpt0dma6WCemrVC7IfqvLD3KYCl4vJrFP4Y";
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&t=${Date.now()}`;
+
+let allRows = []; // parsed rows
+let consultants = {}; // { name: { modules: Set, processes: [], avgLevel } }
+let moduleMap = {}; // { code: { consultants: [], avgLevel } }
+
+// ── LOAD ──
+async function loadData() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+
+  try {
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error('fetch failed');
+    const text = await res.text();
+    parseCSV(text);
+    render();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `
+      <div style="text-align:center; color:#FF6B6B; font-family:'DM Mono',monospace; font-size:0.82rem; padding:2rem; line-height:1.8;">
+        Não foi possível carregar os dados.<br>
+        Verifique se a planilha está compartilhada como<br>"Qualquer pessoa com o link pode ver".<br><br>
+        <button onclick="loadData()" style="background:var(--card);border:1px solid var(--border);color:var(--muted);padding:0.5rem 1.2rem;border-radius:6px;cursor:pointer;font-family:'DM Mono',monospace;font-size:0.72rem;">↺ Tentar novamente</button>
+      </div>`;
+  }
+}
+
+// ── PARSE CSV ──
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  // skip header row
+  allRows = lines.slice(1).map(line => {
+    const cols = parseCSVLine(line);
+    return {
+      consultor: (cols[0]||'').trim(),
+      dataHora:  (cols[1]||'').trim(),
+      modulo:    (cols[2]||'').trim(),
+      codigo:    (cols[3]||'').trim(),
+      conhece:   (cols[4]||'').trim().toUpperCase() === 'SIM',
+      subgrupo:  (cols[5]||'').trim(),
+      processo:  (cols[6]||'').trim(),
+      nivel:     parseInt(cols[7]||'0') || 0
+    };
+  }).filter(r => r.consultor);
+
+  // Build consultant map (latest submission per consultant)
+  const consultantDates = {};
+  allRows.forEach(r => {
+    if (!consultantDates[r.consultor] || r.dataHora > consultantDates[r.consultor]) {
+      consultantDates[r.consultor] = r.dataHora;
+    }
+  });
+
+  // Use only latest submission per consultant
+  const latestRows = allRows.filter(r => r.dataHora === consultantDates[r.consultor]);
+
+  consultants = {};
+  latestRows.forEach(r => {
+    if (!consultants[r.consultor]) {
+      consultants[r.consultor] = {
+        name: r.consultor,
+        date: r.dataHora,
+        modulesKnown: new Set(),
+        modulesTotal: new Set(),
+        processes: [],
+        levels: []
+      };
+    }
+    const c = consultants[r.consultor];
+    c.modulesTotal.add(r.codigo);
+    if (r.conhece) {
+      c.modulesKnown.add(r.codigo);
+      if (r.processo && r.nivel > 0) {
+        c.processes.push(r);
+        c.levels.push(r.nivel);
+      }
+    }
+  });
+
+  // Build module map
+  moduleMap = {};
+  latestRows.forEach(r => {
+    if (!moduleMap[r.codigo]) {
+      moduleMap[r.codigo] = { code: r.codigo, name: r.modulo, experts: [], levels: [] };
+    }
+    const m = moduleMap[r.codigo];
+    if (r.conhece && !m.experts.find(e => e.name === r.consultor)) {
+      // compute avg for this consultant in this module
+      const consultantModLevels = latestRows
+        .filter(x => x.consultor === r.consultor && x.codigo === r.codigo && x.nivel > 0)
+        .map(x => x.nivel);
+      const avg = consultantModLevels.length
+        ? (consultantModLevels.reduce((a,b)=>a+b,0) / consultantModLevels.length).toFixed(1)
+        : '—';
+      m.experts.push({ name: r.consultor, avg, levels: consultantModLevels });
+    }
+    if (r.conhece && r.nivel > 0) m.levels.push(r.nivel);
+  });
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── RENDER ALL ──
+function render() {
+  renderKPIs();
+  renderCoverage();
+  renderRecent();
+  renderConsultants();
+  renderModules();
+  populateFilters();
+  renderMatriz();
+}
+
+// ── KPIs ──
+function renderKPIs() {
+  const consultantNames = Object.keys(consultants);
+  const totalProcesses = Object.values(consultants).reduce((a,c) => a + c.processes.length, 0);
+  const allLevels = Object.values(consultants).flatMap(c => c.levels);
+  const avg = allLevels.length ? (allLevels.reduce((a,b)=>a+b,0)/allLevels.length).toFixed(1) : '—';
+  const totalModulesKnown = Object.values(consultants).reduce((a,c) => a + c.modulesKnown.size, 0);
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card"><div class="kpi-val">${consultantNames.length}</div><div class="kpi-label">Consultores que responderam</div></div>
+    <div class="kpi-card"><div class="kpi-val">${totalModulesKnown}</div><div class="kpi-label">Módulos mapeados (total)</div></div>
+    <div class="kpi-card"><div class="kpi-val">${totalProcesses}</div><div class="kpi-label">Processos com nível definido</div></div>
+    <div class="kpi-card"><div class="kpi-val">${avg}</div><div class="kpi-label">Nível médio geral (1–5)</div></div>
+  `;
+}
+
+// ── COVERAGE ──
+function renderCoverage() {
+  const consultantNames = Object.keys(consultants);
+  const total = consultantNames.length || 1;
+  const modCoverage = {};
+  consultantNames.forEach(name => {
+    consultants[name].modulesKnown.forEach(code => {
+      modCoverage[code] = (modCoverage[code] || 0) + 1;
+    });
+  });
+
+  const sorted = Object.entries(modCoverage).sort((a,b) => b[1]-a[1]);
+  document.getElementById('coverageList').innerHTML = sorted.map(([code, count]) => {
+    const pct = Math.round((count/total)*100);
+    const name = moduleMap[code]?.name || code;
+    return `
+      <div class="coverage-row">
+        <span class="coverage-label">${code}</span>
+        <div class="coverage-bar-wrap"><div class="coverage-bar-fill" style="width:${pct}%"></div></div>
+        <span class="coverage-pct">${pct}%</span>
+      </div>`;
+  }).join('');
+}
+
+// ── RECENT ──
+function renderRecent() {
+  const rows = Object.values(consultants)
+    .sort((a,b) => b.date.localeCompare(a.date))
+    .slice(0, 20);
+
+  document.getElementById('recentTable').innerHTML = rows.map(c => {
+    const avg = c.levels.length ? (c.levels.reduce((a,b)=>a+b,0)/c.levels.length).toFixed(1) : '—';
+    const dt = c.date ? new Date(c.date).toLocaleString('pt-BR') : '—';
+    return `<tr>
+      <td><strong>${c.name}</strong></td>
+      <td style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--muted);">${dt}</td>
+      <td><span class="badge badge-mod">${c.modulesKnown.size} módulos</span></td>
+      <td style="font-family:'DM Mono',monospace;">${c.processes.length}</td>
+      <td><span class="level-pill lvl-${Math.round(avg)||0}">${avg}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="no-data">Nenhuma resposta ainda.</td></tr>';
+}
+
+// ── CONSULTANTS ──
+function renderConsultants() {
+  const names = Object.keys(consultants).sort();
+  document.getElementById('consultantGrid').innerHTML = names.map(name => {
+    const c = consultants[name];
+    const avg = c.levels.length ? (c.levels.reduce((a,b)=>a+b,0)/c.levels.length).toFixed(1) : '—';
+    const init = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    return `
+      <div class="consultant-card" onclick="showDetail('${name.replace(/'/g,"\\'")}')">
+        <div class="cc-top">
+          <div class="cc-avatar">${init}</div>
+          <div>
+            <div class="cc-name">${name}</div>
+            <div class="cc-date">${c.date ? new Date(c.date).toLocaleDateString('pt-BR') : ''}</div>
+          </div>
+        </div>
+        <div class="cc-stats">
+          <div class="cc-stat"><span class="cc-stat-val">${c.modulesKnown.size}</span><span class="cc-stat-label">Módulos</span></div>
+          <div class="cc-stat"><span class="cc-stat-val">${c.processes.length}</span><span class="cc-stat-label">Processos</span></div>
+          <div class="cc-stat"><span class="cc-stat-val">${avg}</span><span class="cc-stat-label">Nível médio</span></div>
+        </div>
+      </div>`;
+  }).join('') || '<div class="no-data">Nenhum consultor encontrado.</div>';
+}
+
+function showDetail(name) {
+  const c = consultants[name];
+  if (!c) return;
+
+  document.querySelectorAll('.consultant-card').forEach(el => el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+
+  document.getElementById('detailName').textContent = name;
+
+  // Module chips
+  const allCodes = [...c.modulesTotal];
+  document.getElementById('detailModules').innerHTML = allCodes.map(code => {
+    const known = c.modulesKnown.has(code);
+    const modLevels = c.processes.filter(p => p.codigo === code).map(p => p.nivel).filter(n=>n>0);
+    const avg = modLevels.length ? (modLevels.reduce((a,b)=>a+b,0)/modLevels.length).toFixed(1) : null;
+    return `<div class="detail-mod-chip ${known?'known':''}">
+      <span class="chip-code">${code}</span>
+      ${known && avg ? `<span class="chip-avg">▸ ${avg}</span>` : ''}
+      ${!known ? '<span style="color:var(--muted);font-size:0.6rem;">—</span>' : ''}
+    </div>`;
+  }).join('');
+
+  // Process table
+  const rows = c.processes.sort((a,b) => a.codigo.localeCompare(b.codigo));
+  document.getElementById('detailTable').innerHTML = rows.map(r => {
+    const lvlClass = r.nivel >= 4 ? 'high' : '';
+    return `<tr>
+      <td><span class="badge badge-mod">${r.codigo}</span></td>
+      <td>${r.processo}</td>
+      <td>
+        <div class="level-dots">
+          ${[1,2,3,4,5].map(i => `<div class="level-dot${i<=r.nivel?' filled'+(r.nivel>=4?' high':''):''}"></div>`).join('')}
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="3" class="no-data">Sem processos mapeados com nível.</td></tr>';
+
+  document.getElementById('consultantDetail').style.display = 'block';
+  document.getElementById('consultantDetail').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function closeDetail() {
+  document.getElementById('consultantDetail').style.display = 'none';
+  document.querySelectorAll('.consultant-card').forEach(el => el.classList.remove('selected'));
+}
+
+// ── MODULES ──
+function renderModules() {
+  const codes = Object.keys(moduleMap).sort();
+  document.getElementById('moduleExpertGrid').innerHTML = codes.map(code => {
+    const m = moduleMap[code];
+    const experts = m.experts.sort((a,b) => parseFloat(b.avg||0) - parseFloat(a.avg||0));
+    const avg = m.levels.length ? (m.levels.reduce((a,b)=>a+b,0)/m.levels.length).toFixed(1) : '—';
+    return `
+      <div class="mod-exp-card">
+        <div class="mod-exp-header">
+          <div>
+            <div class="mod-exp-code">${code}</div>
+            <div class="mod-exp-name">${m.name}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="mod-exp-count">${experts.length} pessoa${experts.length!==1?'s':''}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent);">avg ${avg}</div>
+          </div>
+        </div>
+        <div class="mod-exp-body">
+          ${experts.length === 0
+            ? '<div style="color:var(--muted);font-size:0.75rem;font-style:italic;">Nenhum consultor conhece este módulo ainda.</div>'
+            : experts.map(e => `
+              <div class="mod-expert-row">
+                <span class="mod-expert-name">${e.name}</span>
+                <div class="level-dots">
+                  ${[1,2,3,4,5].map(i => {
+                    const avg = parseFloat(e.avg)||0;
+                    const filled = i <= Math.round(avg);
+                    return `<div class="level-dot${filled?' filled'+(avg>=4?' high':''):''}"></div>`;
+                  }).join('')}
+                </div>
+              </div>`).join('')
+          }
+        </div>
+      </div>`;
+  }).join('') || '<div class="no-data">Nenhum módulo mapeado.</div>';
+}
+
+// ── MATRIZ ──
+function populateFilters() {
+  const consultorSel = document.getElementById('filterConsultor');
+  const moduloSel = document.getElementById('filterModulo');
+
+  const names = Object.keys(consultants).sort();
+  consultorSel.innerHTML = '<option value="">Todos os consultores</option>' +
+    names.map(n => `<option value="${n}">${n}</option>`).join('');
+
+  const codes = Object.keys(moduleMap).sort();
+  moduloSel.innerHTML = '<option value="">Todos os módulos</option>' +
+    codes.map(c => `<option value="${c}">${c} — ${moduleMap[c].name}</option>`).join('');
+}
+
+function renderMatriz() {
+  const filterC = document.getElementById('filterConsultor').value;
+  const filterM = document.getElementById('filterModulo').value;
+  const filterN = document.getElementById('filterNivel').value;
+
+  // Get latest rows
+  const consultantNames = Object.keys(consultants);
+  let rows = [];
+  consultantNames.forEach(name => {
+    const c = consultants[name];
+    // add known modules with processes
+    c.processes.forEach(p => {
+      rows.push({ consultor: name, ...p });
+    });
+    // add not-known modules
+    c.modulesTotal.forEach(code => {
+      if (!c.modulesKnown.has(code)) {
+        rows.push({ consultor: name, codigo: code, modulo: moduleMap[code]?.name||code, conhece: false, processo: '', nivel: 0, subgrupo: '' });
+      }
+    });
+  });
+
+  // Filter
+  if (filterC) rows = rows.filter(r => r.consultor === filterC);
+  if (filterM) rows = rows.filter(r => r.codigo === filterM);
+  if (filterN === '5') rows = rows.filter(r => r.nivel === 5);
+  else if (filterN === '4') rows = rows.filter(r => r.nivel >= 4);
+  else if (filterN === '3') rows = rows.filter(r => r.nivel >= 3);
+  else if (filterN === '1') rows = rows.filter(r => r.nivel >= 1);
+  else if (filterN === '0') rows = rows.filter(r => !r.conhece);
+
+  // Sort
+  rows.sort((a,b) => a.consultor.localeCompare(b.consultor) || a.codigo.localeCompare(b.codigo) || b.nivel-a.nivel);
+
+  document.getElementById('matrizTable').innerHTML = rows.slice(0, 500).map(r => `
+    <tr>
+      <td><strong>${r.consultor}</strong></td>
+      <td><span class="badge badge-mod">${r.codigo}</span></td>
+      <td><span class="badge ${r.conhece?'badge-sim':'badge-nao'}">${r.conhece?'SIM':'NÃO'}</span></td>
+      <td style="color:${r.processo?'var(--text)':'var(--muted)'};">${r.processo||'—'}</td>
+      <td style="color:var(--muted);font-size:0.75rem;">${r.subgrupo||'—'}</td>
+      <td>
+        ${r.nivel > 0
+          ? `<div class="level-dots">${[1,2,3,4,5].map(i=>`<div class="level-dot${i<=r.nivel?' filled'+(r.nivel>=4?' high':''):''}"></div>`).join('')}</div>`
+          : '<span style="color:var(--border);font-size:0.75rem;">—</span>'
+        }
+      </td>
+    </tr>`).join('') || '<tr><td colspan="6" class="no-data">Nenhum resultado para os filtros aplicados.</td></tr>';
+}
+
+// ── TABS ──
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('view-' + id).classList.add('active');
+}
+
+// ── INIT ──
+loadData();
+</script>
+</body>
+</html>
