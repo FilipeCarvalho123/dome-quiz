@@ -779,7 +779,7 @@
     </p>
     <div class="input-group">
       <label>Seu nome completo</label>
-      <input type="text" id="userName" placeholder="Ex: Ana Lima" autocomplete="off" />
+      <input type="text" id="userName" placeholder="Ex: Seu Nome" autocomplete="off" />
     </div>
     <button class="btn-primary" onclick="startQuiz()">Iniciar mapeamento →</button>
   </div>
@@ -840,9 +840,10 @@
     <div class="summary-grid" id="summaryGrid"></div>
     <div class="result-section-title">Detalhamento por módulo</div>
     <div id="resultModules"></div>
-    <div>
-      <button class="btn-download" onclick="downloadJSON()">↓ Exportar JSON</button>
+    <div id="sendArea">
+      <button class="btn-download" id="sendBtn" onclick="sendResults()">↑ Enviar resultado</button>
       <button class="btn-restart" onclick="location.reload()">↺ Reiniciar</button>
+      <div id="sendStatus" style="margin-top:1rem; font-size:0.82rem; font-family:'DM Mono',monospace; display:none;"></div>
     </div>
   </div>
 </div>
@@ -1611,9 +1612,11 @@ function toggleResultMod(headerEl) {
   mod.classList.toggle('open');
 }
 
-// ==================== EXPORT ====================
-function downloadJSON() {
-  const output = {
+// ==================== SEND TO GOOGLE SHEETS ====================
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbxWNRWp8Zc03d8-wsBHuhjBgxAORMTWnCYbXSsuoFHZdk8lejsLwIwhwBy_tAw5U2X3bw/exec";
+
+function buildPayload() {
+  return {
     consultor: userName,
     data: new Date().toISOString(),
     modulos: MODULES.map(mod => {
@@ -1640,13 +1643,44 @@ function downloadJSON() {
       return result;
     })
   };
-  const blob = new Blob([JSON.stringify(output, null, 2)], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `dome_mapeamento_${userName.toLowerCase().replace(/\s+/g,'_')}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+}
+
+async function sendResults() {
+  const btn = document.getElementById('sendBtn');
+  const statusEl = document.getElementById('sendStatus');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+  btn.style.opacity = '0.6';
+  statusEl.style.display = 'none';
+
+  const payload = buildPayload();
+
+  try {
+    const resp = await fetch(SHEET_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    // no-cors sempre retorna opaque — assumimos sucesso se não jogou erro
+    btn.textContent = '✓ Enviado com sucesso!';
+    btn.style.background = 'rgba(78,205,196,0.15)';
+    btn.style.color = 'var(--accent2)';
+    btn.style.borderColor = 'var(--accent2)';
+    btn.style.opacity = '1';
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--accent2)';
+    statusEl.textContent = 'Seus dados foram enviados. A equipe DOME já pode visualizar seu perfil.';
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = '↑ Tentar novamente';
+    btn.style.opacity = '1';
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Erro ao enviar. Verifique sua conexão e tente novamente.';
+  }
 }
 </script>
 </body>
