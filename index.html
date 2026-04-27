@@ -1613,7 +1613,7 @@ function toggleResultMod(headerEl) {
 }
 
 // ==================== SEND TO GOOGLE SHEETS ====================
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbxWNRWp8Zc03d8-wsBHuhjBgxAORMTWnCYbXSsuoFHZdk8lejsLwIwhwBy_tAw5U2X3bw/exec";
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbxaUEEuQRG5gzWIXd4yF4QysAyfP7TXCtHda1d50Q5zTN17Aeg1F2-UL3cI-k6lkCCgdg/exec";
 
 function buildPayload() {
   return {
@@ -1656,15 +1656,23 @@ async function sendResults() {
 
   const payload = buildPayload();
 
+  // Encode payload as URL param (GET request via hidden form — bypasses CORS)
+  const encoded = encodeURIComponent(JSON.stringify(payload));
+  const url = SHEET_URL + "?data=" + encoded;
+
+  // Use a hidden iframe to fire the GET without CORS issues
   try {
-    const resp = await fetch(SHEET_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+    await new Promise((resolve, reject) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.onload = () => { document.body.removeChild(iframe); resolve(); };
+      iframe.onerror = () => { document.body.removeChild(iframe); reject(); };
+      // Timeout fallback — Apps Script always responds, onload fires even on redirect
+      setTimeout(resolve, 5000);
+      iframe.src = url;
+      document.body.appendChild(iframe);
     });
 
-    // no-cors sempre retorna opaque — assumimos sucesso se não jogou erro
     btn.textContent = '✓ Enviado com sucesso!';
     btn.style.background = 'rgba(78,205,196,0.15)';
     btn.style.color = 'var(--accent2)';
@@ -1672,7 +1680,7 @@ async function sendResults() {
     btn.style.opacity = '1';
     statusEl.style.display = 'block';
     statusEl.style.color = 'var(--accent2)';
-    statusEl.textContent = 'Seus dados foram enviados. A equipe DOME já pode visualizar seu perfil.';
+    statusEl.textContent = 'Seus dados foram enviados. A equipe DOME já pode visualizar seu perfil na planilha.';
   } catch (err) {
     btn.disabled = false;
     btn.textContent = '↑ Tentar novamente';
