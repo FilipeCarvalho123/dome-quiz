@@ -779,7 +779,7 @@
     </p>
     <div class="input-group">
       <label>Seu nome completo</label>
-      <input type="text" id="userName" placeholder="Ex: Seu Nome" autocomplete="off" />
+      <input type="text" id="userName" placeholder="Ex: Ana Lima" autocomplete="off" />
     </div>
     <button class="btn-primary" onclick="startQuiz()">Iniciar mapeamento →</button>
   </div>
@@ -855,7 +855,7 @@ const MODULES = [
     code: "R2R", name: "Record to Report", fullName: "Cadastros Gerais",
     groups: [
       { name: "Cadastros Fundamentais", lines: [
-        "Subsidiárias e estrutura de holldings",
+        "Subsidiárias e estrutura societária",
         "Departamentos e hierarquia organizacional",
         "Centro de Custos",
         "Localidades (estabelecimentos físicos)"
@@ -875,7 +875,7 @@ const MODULES = [
       ]},
       { name: "Cadastros CNAB", lines: [
         "CNAB 240 — Layout de pagamento",
-        "CNAB 400 — Layout de cobrança (boletos)"
+        "CNAB 400/240 — Layout de cobrança (boletos)"
       ]}
     ]
   },
@@ -888,6 +888,7 @@ const MODULES = [
         "Modelos para Obrigações",
         "NF-e de produto (modelo 55)",
         "NFS-e (nota de serviço pela prefeitura)",
+        "CT-e (conhecimento de transporte)",
         "NF-e de importação",
         "NF-e de exportação",
         "Remessa de saída / transferência entre estabelecimentos",
@@ -897,11 +898,12 @@ const MODULES = [
         "Autoridades Fiscais (Séries)",
         "Naturezas de Operação (CFOP)",
         "Regra de Determinação de Impostos",
+        "Regras de determinação de impostos (geral)",
         "Configuração de impostos e contas contábeis"
       ]},
       { name: "CNAB", lines: [
         "CNAB 240 — Pagamentos (NBL)",
-        "CNAB 400 — Cobrança (retorno de boletos)",
+        "CNAB 400/240 — Cobrança (retorno de boletos)",
         "API Banco do Brasil (se aplicável)"
       ]}
     ]
@@ -1011,8 +1013,8 @@ const MODULES = [
         "Pedido de Compra Intercompany",
         "Fluxo de Aprovação de Compras",
         "Pedido de Compra com Pré-Pagamento vinculado",
-        "Recebimento de item COM controle de estoque",
-        "Recebimento de item SEM controle de estoque",
+        "Recebimento de item com controle de estoque",
+        "Recebimento de item sem controle de estoque",
         "Recebimento de item de serviço",
         "Recebimento Intercompany"
       ]},
@@ -1155,6 +1157,7 @@ const MODULES = [
         "Documento Fiscal",
         "Cálculo de Imposto no Documento Fiscal",
         "Emissão de NF-e de Produto",
+        "Carta de Correção Eletrônica (CC-e)",
         "Cancelamento de NF-e de Produto",
         "Emissão de NFS-e",
         "Cancelamento de NFS-e",
@@ -1610,7 +1613,7 @@ function toggleResultMod(headerEl) {
 }
 
 // ==================== SEND TO GOOGLE SHEETS ====================
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbxaUEEuQRG5gzWIXd4yF4QysAyfP7TXCtHda1d50Q5zTN17Aeg1F2-UL3cI-k6lkCCgdg/exec";
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwp0F3DU_Vjbdfu8-CLa7OOdrbD5C4TCJQ5AA9RGhioCdJMeNiy-gZAOcpE6AgmH9chtg/exec";
 
 function buildPayload() {
   return {
@@ -1653,23 +1656,17 @@ async function sendResults() {
 
   const payload = buildPayload();
 
-  // Encode payload as URL param (GET request via hidden form — bypasses CORS)
-  const encoded = encodeURIComponent(JSON.stringify(payload));
-  const url = SHEET_URL + "?data=" + encoded;
-
-  // Use a hidden iframe to fire the GET without CORS issues
   try {
-    await new Promise((resolve, reject) => {
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.onload = () => { document.body.removeChild(iframe); resolve(); };
-      iframe.onerror = () => { document.body.removeChild(iframe); reject(); };
-      // Timeout fallback — Apps Script always responds, onload fires even on redirect
-      setTimeout(resolve, 5000);
-      iframe.src = url;
-      document.body.appendChild(iframe);
+    // POST via fetch com no-cors — o Google Apps Script recebe e salva
+    // O navegador bloqueia a leitura da resposta mas o envio chega normalmente
+    await fetch(SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
     });
 
+    // Se chegou aqui sem exception = fetch disparou ok
     btn.textContent = '✓ Enviado com sucesso!';
     btn.style.background = 'rgba(78,205,196,0.15)';
     btn.style.color = 'var(--accent2)';
@@ -1678,13 +1675,55 @@ async function sendResults() {
     statusEl.style.display = 'block';
     statusEl.style.color = 'var(--accent2)';
     statusEl.textContent = 'Seus dados foram enviados. A equipe DOME já pode visualizar seu perfil na planilha.';
+
   } catch (err) {
-    btn.disabled = false;
-    btn.textContent = '↑ Tentar novamente';
-    btn.style.opacity = '1';
-    statusEl.style.display = 'block';
-    statusEl.style.color = 'var(--danger)';
-    statusEl.textContent = 'Erro ao enviar. Verifique sua conexão e tente novamente.';
+    // Fallback: tenta via formulário oculto (funciona mesmo sem CORS)
+    try {
+      await new Promise((resolve) => {
+        const iframe = document.createElement('iframe');
+        iframe.name = 'hidden_iframe';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = SHEET_URL;
+        form.target = 'hidden_iframe';
+        form.style.display = 'none';
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'payload';
+        input.value = JSON.stringify(payload);
+        form.appendChild(input);
+        document.body.appendChild(form);
+
+        iframe.onload = () => {
+          document.body.removeChild(form);
+          document.body.removeChild(iframe);
+          resolve();
+        };
+        setTimeout(resolve, 6000);
+        form.submit();
+      });
+
+      btn.textContent = '✓ Enviado com sucesso!';
+      btn.style.background = 'rgba(78,205,196,0.15)';
+      btn.style.color = 'var(--accent2)';
+      btn.style.borderColor = 'var(--accent2)';
+      btn.style.opacity = '1';
+      statusEl.style.display = 'block';
+      statusEl.style.color = 'var(--accent2)';
+      statusEl.textContent = 'Seus dados foram enviados. A equipe DOME já pode visualizar seu perfil na planilha.';
+
+    } catch(err2) {
+      btn.disabled = false;
+      btn.textContent = '↑ Tentar novamente';
+      btn.style.opacity = '1';
+      statusEl.style.display = 'block';
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = 'Erro ao enviar. Verifique sua conexão e tente novamente.';
+    }
   }
 }
 </script>
